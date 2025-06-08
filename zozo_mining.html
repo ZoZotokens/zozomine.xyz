@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ZoZo Mining</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <style>
+    body {
+      background-color: #111;
+      color: #eee;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+    video.banner {
+      width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+      margin-bottom: 20px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-bottom: 10px;
+      border: none;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 5px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background-color: #444;
+      color: #fff;
+    }
+    button:disabled {
+      background-color: #222;
+      cursor: not-allowed;
+    }
+    .stats, .referral-box {
+      margin-top: 20px;
+      background: #222;
+      padding: 10px;
+      border-radius: 10px;
+      text-align: left;
+    }
+    .progress-container {
+      width: 100%;
+      background-color: #333;
+      border-radius: 10px;
+      margin-top: 20px;
+      height: 20px;
+      overflow: hidden;
+      display: none;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: #0f0;
+      transition: width 0.5s ease-out;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <video class="banner" autoplay muted loop>
+      <source src="https://cdn1.site-media.eu/images/0/16594716/ZOZOmining-banner-ax0_VFS_O9Yw0NFAE9ryXg.mp4" type="video/mp4">
+    </video>
+
+    <input type="text" id="walletInput" placeholder="Enter your wallet address" />
+    <label id="captchaQuestion"></label><br />
+    Answer: <input type="text" id="captchaAnswer" /><br /><br />
+
+    <div>
+      <button id="mineBtn" disabled>Mine</button>
+      <button id="claimBtn" disabled>Claim</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <button id="exitBtn" disabled>Exit</button>
+    </div>
+
+    <div class="progress-container" id="progressContainer">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="referral-box">
+      <p>Your referral link:</p>
+      <input type="text" id="refLink" readonly />
+      <button onclick="copyRefLink()">Copy Link</button>
+    </div>
+
+    <div class="stats" id="statsBox">
+      <p>Hashrate: <span id="hashrate">0.0000000000</span> H/s</p>
+      <p>Extracted Total: <span id="totalMined">0.0000000000</span> Tokens</p>
+      <p>Claimed Total: <span id="totalClaimed">0.0000000000</span> Tokens</p>
+      <p>Stored Tokens: <span id="storedTokens">0.0000000000</span></p>
+      <p>Referral Reward: <span id="referralReward">0.0000000000</span> Tokens</p>
+      <p>Daily Extraction: <span id="todayMined">0.0000000000</span></p>
+    </div>
+  </div>
+
+  <script>
+    let rewardMultiplier = 1;
+    const walletInput = document.getElementById('walletInput');
+    const captchaAnswerInput = document.getElementById('captchaAnswer');
+    const mineBtn = document.getElementById('mineBtn');
+    const claimBtn = document.getElementById('claimBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const exitBtn = document.getElementById('exitBtn');
+    const refLinkInput = document.getElementById('refLink');
+    const captchaQuestion = document.getElementById('captchaQuestion');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+
+    let mined = 0, claimed = 0, referralBonus = 0;
+    let dailyMined = { [new Date().toISOString().slice(0, 10)]: 0 };
+    const refAddress = new URLSearchParams(window.location.search).get('ref');
+    let num1, num2, operator, correctAnswer;
+
+    function generateCaptcha() {
+      num1 = Math.floor(Math.random() * 10) + 1;
+      num2 = Math.floor(Math.random() * 10) + 1;
+      operator = Math.random() < 0.5 ? '+' : '-';
+      correctAnswer = operator === '+' ? num1 + num2 : num1 - num2;
+      captchaQuestion.textContent = `What is ${num1} ${operator} ${num2}?`;
+    }
+
+    function checkCaptchaAnswer() {
+      const userAnswer = parseInt(captchaAnswerInput.value.trim());
+      return userAnswer === correctAnswer;
+    }
+
+    function checkInputs() {
+      const valid = /^0x[a-fA-F0-9]{40}$/.test(walletInput.value.trim());
+      const captchaOk = checkCaptchaAnswer();
+      const ready = valid && captchaOk;
+      mineBtn.disabled = !ready;
+      claimBtn.disabled = !ready;
+      stopBtn.disabled = !ready;
+      exitBtn.disabled = !ready;
+      refLinkInput.value = valid ? `${location.origin}?ref=${walletInput.value.trim()}` : '';
+    }
+
+    function copyRefLink() {
+      refLinkInput.select();
+      document.execCommand("copy");
+      alert("Referral link copied.");
+    }
+
+    function updateUI() {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      document.getElementById('hashrate').innerText = mining && document.visibilityState === 'visible' ? (Math.random() * 0.0001 + 0.00001).toFixed(10) : "0.0000000000";
+      document.getElementById('totalMined').innerText = mined.toFixed(10);
+      document.getElementById('totalClaimed').innerText = claimed.toFixed(10);
+      document.getElementById('storedTokens').innerText = (mined - claimed).toFixed(10);
+      document.getElementById('referralReward').innerText = referralBonus.toFixed(10);
+      document.getElementById('todayMined').innerText = (dailyMined[todayKey] || 0).toFixed(10);
+    }
+
+    function animateProgressBar() {
+      let width = 0;
+      progressBar.style.width = '0%';
+      progressContainer.style.display = 'block';
+      function frame() {
+        if (!mining || width >= 100) return;
+        width += 1;
+        progressBar.style.width = width + '%';
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function getDailyLimit() {
+      const now = new Date();
+      const start = new Date("2025-05-30");
+      const months = now.getMonth() - start.getMonth() + (12 * (now.getFullYear() - start.getFullYear()));
+      return months < 6 ? 30 : 15;
+    }
+
+    function getClaimRules() {
+      const year = new Date().getFullYear();
+      return year === 2025 ? { min: 5, max: 25 } : { min: 3, max: 10 };
+    }
+
+    let mining = false;
+    mineBtn.addEventListener('click', async () => {
+      if (mining) return;
+      const wallet = walletInput.value.trim();
+      const ip = await fetch('https://api.ipify.org?format=json')
+  .then(res => res.json())
+  .then(data => data.ip)
+  .catch(() => null);
+
+const allowed = await fetch('/can-mine', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ wallet, ip })
+})
+  .then(r => r.json())
+  .then(r => r.allowed)
+  .catch(() => false);
+
+      }).then(r => r.json()).then(r => r.allowed).catch(() => false);
+      if (!allowed) return alert("Mining not allowed.");
+	  const rewardState = await fetch('/reward-multiplier')
+      .then(r => r.json())
+     .catch(() => ({ multiplier: 1 }));
+    rewardMultiplier = rewardState.multiplier || 1;
+
+      mining = true;
+      animateProgressBar();
+
+      const avgRate = getDailyLimit() / 86400;
+      if (window.miningInterval) clearInterval(window.miningInterval);
+      window.miningInterval = setInterval(() => {
+        if (!mining || document.hidden === true) return;
+        mined += avgRate * (0.5 + Math.random()) * rewardMultiplier;
+        const todayKey = new Date().toISOString().slice(0, 10);
+        if (!dailyMined[todayKey]) dailyMined[todayKey] = 0;
+        dailyMined[todayKey] += avgRate;
+        updateUI();
+      }, 1000);
+    });
+
+    stopBtn.addEventListener('click', () => {
+      mining = false;
+      clearInterval(window.miningInterval);
+      progressContainer.style.display = 'none';
+      updateUI();
+    });
+
+    exitBtn.addEventListener('click', async () => {
+      mining = false;
+      clearInterval(window.miningInterval);
+      progressContainer.style.display = 'none';
+      await fetch('/exit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet: walletInput.value.trim() })
+      });
+    });
+
+    claimBtn.addEventListener('click', async () => {
+      const wallet = walletInput.value.trim();
+      const rules = getClaimRules();
+      const available = mined - claimed;
+      if (available < rules.min) return alert(`Min claim is ${rules.min} tokens`);
+      const confirmSupport = confirm("1% of your claim goes to ZoZo treasury. Continue?");
+      if (!confirmSupport) return;
+      const amount = Math.min(available, rules.max);
+      const res = await fetch('/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet, amount, ref: refAddress })
+      }).then(r => r.json());
+      if (res.success) {
+        claimed += amount;
+        updateUI();
+        alert(`Claimed. TX: ${res.txHash}`);
+      } else {
+        alert(`Error: ${res.error}`);
+      }
+    });
+
+    let mouseMoved = false;
+    document.addEventListener('mousemove', () => { mouseMoved = true; });
+    setInterval(() => {
+      if (mouseMoved && mining && document.visibilityState === 'visible') {
+        fetch('/user-activity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallet: walletInput.value.trim() })
+        });
+        mouseMoved = false;
+      }
+    }, 15000);
+
+    walletInput.addEventListener('input', checkInputs);
+    captchaAnswerInput.addEventListener('input', checkInputs);
+    setInterval(updateUI, 1000);
+    window.onload = () => {
+      generateCaptcha();
+      updateUI();
+    };
+	window.addEventListener("load", async () => {
+  const wallet = walletInput.value.trim();
+  if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) return;
+  const state = await fetch("/resume", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ wallet })
+  }).then(r => r.json()).catch(() => null);
+  
+  if (state && state.resume) {
+    mined = state.mined || 0;
+    claimed = state.claimed || 0;
+    dailyMined = state.dailyMined || dailyMined;
+    updateUI();
+  }
+});
+
+	window.addEventListener("beforeunload", () => {
+  if (mining) {
+    fetch("/pause", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wallet: walletInput.value.trim() })
+    });
+  }
+});
+  </script>
+</body>
+</html>
