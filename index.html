@@ -199,7 +199,7 @@
   .then(data => data.ip)
   .catch(() => null);
 
-const allowed = await fetch('/can-mine', {
+const allowed = await fetch('/api/mine/can-mine', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ wallet, ip })
@@ -209,7 +209,7 @@ const allowed = await fetch('/can-mine', {
   .catch(() => false);
 
       if (!allowed) return alert("Mining not allowed.");
-	  const rewardState = await fetch('/reward-multiplier')
+	  const rewardState = await fetch('/api/mine/reward-multiplier')
       .then(r => r.json())
      .catch(() => ({ multiplier: 1 }));
     rewardMultiplier = rewardState.multiplier || 1;
@@ -240,7 +240,7 @@ const allowed = await fetch('/can-mine', {
       mining = false;
       clearInterval(window.miningInterval);
       progressContainer.style.display = 'none';
-      await fetch('/exit', {
+      await fetch('/api/exit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ wallet: walletInput.value.trim() })
@@ -255,13 +255,11 @@ const allowed = await fetch('/can-mine', {
       const confirmSupport = confirm("1% of your claim goes to ZoZo treasury. Continue?");
       if (!confirmSupport) return;
       const amount = Math.min(available, rules.max);
-      const res = await fetch('/claim', {
-  const res = await fetch('/api/claim/claim', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ wallet, amount, ref: refAddress })
-  }).then(r => r.json());
-
+      const res = await fetch('/api/claim/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet, amount, ref: refAddress })
+      }).then(r => r.json());
       if (res.success) {
         claimed += amount;
         updateUI();
@@ -275,7 +273,7 @@ const allowed = await fetch('/can-mine', {
     document.addEventListener('mousemove', () => { mouseMoved = true; });
     setInterval(() => {
       if (mouseMoved && mining && document.visibilityState === 'visible') {
-        fetch('/user-activity', {
+        fetch('/api/user/user-activity', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ wallet: walletInput.value.trim() })
@@ -294,7 +292,7 @@ window.addEventListener("load", () => {
 	window.addEventListener("load", async () => {
   const wallet = walletInput.value.trim();
   if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) return;
-  const state = await fetch("/resume", {
+  const state = await fetch("/api/user/resume", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ wallet })
@@ -310,7 +308,7 @@ window.addEventListener("load", () => {
 
 	window.addEventListener("beforeunload", () => {
   if (mining) {
-    fetch("/pause", {
+    fetch("/api/user/pause", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ wallet: walletInput.value.trim() })
