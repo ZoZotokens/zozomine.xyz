@@ -256,10 +256,12 @@ const allowed = await fetch('/can-mine', {
       if (!confirmSupport) return;
       const amount = Math.min(available, rules.max);
       const res = await fetch('/claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet, amount, ref: refAddress })
-      }).then(r => r.json());
+  const res = await fetch('/api/claim/claim', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ wallet, amount, ref: refAddress })
+  }).then(r => r.json());
+
       if (res.success) {
         claimed += amount;
         updateUI();
