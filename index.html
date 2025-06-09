@@ -208,7 +208,6 @@ const allowed = await fetch('/can-mine', {
   .then(r => r.allowed)
   .catch(() => false);
 
-      }).then(r => r.json()).then(r => r.allowed).catch(() => false);
       if (!allowed) return alert("Mining not allowed.");
 	  const rewardState = await fetch('/reward-multiplier')
       .then(r => r.json())
@@ -286,10 +285,10 @@ const allowed = await fetch('/can-mine', {
     walletInput.addEventListener('input', checkInputs);
     captchaAnswerInput.addEventListener('input', checkInputs);
     setInterval(updateUI, 1000);
-    window.onload = () => {
-      generateCaptcha();
-      updateUI();
-    };
+window.addEventListener("load", () => {
+  generateCaptcha();
+  updateUI();
+});
 	window.addEventListener("load", async () => {
   const wallet = walletInput.value.trim();
   if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) return;
