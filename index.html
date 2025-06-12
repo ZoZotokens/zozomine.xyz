@@ -150,10 +150,11 @@
     }
 
     function copyRefLink() {
-      refLinkInput.select();
-      document.execCommand("copy");
-      alert("Referral link copied.");
-    }
+  navigator.clipboard.writeText(refLinkInput.value)
+    .then(() => alert("Referral link copied."))
+    .catch(err => alert("Failed to copy referral link."));
+}
+
 
     function updateUI() {
       const todayKey = new Date().toISOString().slice(0, 10);
