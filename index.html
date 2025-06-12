@@ -194,10 +194,7 @@
     mineBtn.addEventListener('click', async () => {
       if (mining) return;
       const wallet = walletInput.value.trim();
-      const ip = await fetch('https://api.ipify.org?format=json')
-  .then(res => res.json())
-  .then(data => data.ip)
-  .catch(() => null);
+
 
 const allowed = await fetch('/api/mine/can-mine', {
   method: 'POST',
