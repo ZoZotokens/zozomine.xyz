@@ -199,7 +199,7 @@
 const allowed = await fetch('/api/mine/can-mine', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ wallet, ip })
+  body: JSON.stringify({ wallet })
 })
   .then(r => r.json())
   .then(r => r.allowed)
